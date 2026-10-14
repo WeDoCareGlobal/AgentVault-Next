@@ -64,6 +64,13 @@ describe("ToolRegistry", () => {
     expect(registry.get("nope/nope")).toBeNull();
   });
 
+  it("returns the persisted id when a registration is updated", () => {
+    const first = registry.register(manifest(), "Low");
+    const updated = registry.register(manifest({ description: "new" }), "High");
+    expect(updated.id).toBe(first.id);
+    expect(updated.id).toBe(registry.get("acme/tool", "1.0.0")?.id);
+  });
+
   it("removes by exact version only", () => {
     registry.register(manifest());
     registry.register(manifest({ version: "2.0.0" }));
@@ -78,3 +85,4 @@ describe("ToolRegistry", () => {
     expect(new ToolRegistry(db, "t2").list()).toHaveLength(0);
   });
 });
+

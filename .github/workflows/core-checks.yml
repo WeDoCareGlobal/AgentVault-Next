@@ -1,7 +1,7 @@
 name: AgentVault core checks
 on:
   push:
-    branches: [development/agentvault-integration-20261014]
+    branches: ['development/**']
   pull_request:
 jobs:
   core:
@@ -9,13 +9,13 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       - uses: pnpm/action-setup@v4
-        with:
       - uses: actions/setup-node@v4
         with:
-          node-version: '22'
+          node-version: '24'
           cache: pnpm
       - run: pnpm install --frozen-lockfile
       - run: pnpm --filter @we-do-care/agentvault-shared build
       - run: pnpm --filter @we-do-care/agentvault-core build
       - run: pnpm --filter @we-do-care/agentvault-shared test
       - run: pnpm --filter @we-do-care/agentvault-core test
+

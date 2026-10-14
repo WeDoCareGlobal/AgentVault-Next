@@ -38,7 +38,10 @@ export class ToolRegistry {
       id, this.tenant, manifest.name, manifest.version,
       JSON.stringify(manifest), trust, publisher ?? null,
     );
-    return { id, name: manifest.name, version: manifest.version, manifest, trust_level: trust, publisher };
+    // An upsert retains the database row's original id; return that identity.
+    const stored = this.get(manifest.name, manifest.version);
+    if (!stored) throw new Error("Registered tool was not persisted");
+    return stored;
   }
 
   get(name: string, version?: string): RegisteredTool | null {
@@ -74,3 +77,4 @@ export class ToolRegistry {
     };
   }
 }
+
