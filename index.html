@@ -1,0 +1,86 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>AgentVault — Agent Assurance | We Do Care Global</title>
+  <style>
+    :root { --bg:#0f1115; --panel:#171a21; --ink:#e8eaf0; --muted:#9aa4b2; --accent:#7c5cfc; }
+    * { box-sizing: border-box; }
+    body { margin:0; font-family: ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, sans-serif; background:var(--bg); color:var(--ink); }
+    header { padding:48px 24px 24px; text-align:center; }
+    h1 { font-size:1.8rem; margin:0 0 8px; }
+    .lead { color:var(--muted); max-width:640px; margin:0 auto 20px; font-size:.95rem; }
+    .badges { display:flex; flex-wrap:wrap; justify-content:center; gap:12px; margin-top:16px; }
+    .badges img { height:20px; }
+    main { max-width:960px; margin:0 auto; padding:24px; }
+    section { background:var(--panel); border:1px solid #2a2f3a; border-radius:12px; padding:20px; margin:20px 0; }
+    h2 { color:var(--accent); font-size:1.15rem; margin:0 0 12px; }
+    ul { padding-left:20px; color:var(--muted); }
+    code { background:#232833; padding:2px 6px; border-radius:6px; color:#7dd3fc; font-size:.9em; }
+    .packages { display:grid; grid-template-columns:repeat(auto-fill,minmax(160px,1fr)); gap:12px; margin-top:8px; }
+    .pkg { background:#1b1f28; border:1px solid #2a2f3a; border-radius:10px; padding:12px; }
+    .pkg h3 { margin:0 0 4px; color:var(--ink); }
+    .pkg p { margin:0; font-size:.8rem; color:var(--muted); }
+    footer { text-align:center; color:var(--muted); font-size:.8rem; padding:40px 24px; }
+    a { color:#93b5fd; }
+  </style>
+</head>
+<body>
+  <header>
+    <h1>AgentVault — Live Demo</h1>
+    <p class="lead">Registry, secret management and bounded execution for autonomous AI agents. Apache-2.0.</p>
+    <div class="badges">
+      <a href="https://github.com/WeDoCareGlobal/AgentVault-Next"><img src="https://img.shields.io/badge/repo-GitHub-4B5563?style=flat&logo=github" alt="GitHub"></a>
+      <a href="https://orcid.org/0009-0009-8515-2727"><img src="https://img.shields.io/badge/ORCID-0009--0009--8515--2727-24292f?style=flat" alt="ORCID"></a>
+      <a href="https://wedocare-global.com/"><img src="https://img.shields.io/badge/We%20Do%20Care%20Global-Enterprise%20AI%20Governance-7c5cfc?style=flat" alt="WDCG"></a>
+    </div>
+  </header>
+
+  <main>
+    <section>
+      <h2>What it does</h2>
+      <ul>
+        <li><strong>Registry</strong> — catalogue of agent tools with policies and capabilities.</li>
+        <li><strong>Secret management</strong> — scoped secret store with Argon2 hashing.</li>
+        <li><strong>Bounded execution</strong> — policy engine, rate limiting, RBAC, capability restriction.</li>
+        <li><strong>Audit trail</strong> — append-only evidence of every tool call and approval.</li>
+      </ul>
+    </section>
+
+    <section>
+      <h2>Packages</h2>
+      <div class="packages">
+        <div class="pkg"><h3>adapters</h3><p>LLM provider adapters (OpenAI, Anthropic, Gemini, Ollama).</p></div>
+        <div class="pkg"><h3>cli</h3><p>Command-line interface for AgentVault.</p></div>
+        <div class="pkg"><h3>core</h3><p>Core registry, policy and execution engine.</p></div>
+        <div class="pkg"><h3>governance</h3><p>Policy engine, rate limits and RBAC.</p></div>
+        <div class="pkg"><h3>importer</h3><p>OpenAPI / tooling import pipeline.</p></div>
+        <div class="pkg"><h3>server</h3><p>Fastify REST API with CORS.</p></div>
+        <div class="pkg"><h3>shared</h3><p>Shared types and zod schemas.</p></div>
+        <div class="pkg"><h3>telemetry</h3><p>OpenTelemetry spans and tracing.</p></div>
+        <div class="pkg"><h3>vault</h3><p>Argon2 vault, secret store, store.</p></div>
+      </div>
+    </section>
+
+    <section>
+      <h2>Run locally</h2>
+      <pre><code>pnpm install
+pnpm install --frozen-lockfile
+pnpm test
+pnpm typecheck
+pnpm build</code></pre>
+    </section>
+
+    <section>
+      <h2>Publish</h2>
+      <p>Apache-2.0. Zenodo DOI is minted on the first GitHub release via <code>.github/workflows/zenodo.yml</code>.</p>
+      <p><a href="https://github.com/WeDoCareGlobal/AgentVault-Next">github.com/WeDoCareGlobal/AgentVault-Next</a></p>
+    </section>
+  </main>
+
+  <footer>
+    <p>AgentVault — Agent Assurance, Secret Management &amp; Bounded Execution &middot; We Do Care Global &middot; ORCID 0009-0009-8515-2727 &middot; Apache-2.0</p>
+  </footer>
+</body>
+</html>
