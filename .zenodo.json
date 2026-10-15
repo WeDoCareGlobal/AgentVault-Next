@@ -1,0 +1,15 @@
+{
+  "title": "AgentVault — Agent Assurance, Secret Management & Bounded Execution",
+  "upload_type": "software",
+  "creators": [
+    {
+      "name": "Perla, Emir",
+      "affiliation": "We Do Care Global",
+      "orcid": "0009-0009-8515-2727"
+    }
+  ],
+  "description": "Registry, secret management and bounded execution toolset for autonomous AI agents, with append-only audit evidence. Part of the We Do Care Global governance stack.",
+  "access_right": "open",
+  "license": "Apache-2.0",
+  "version": "0.1.3"
+}

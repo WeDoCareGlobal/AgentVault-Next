@@ -1,0 +1,20 @@
+cff-version: 1.2.0
+title: "AgentVault — Agent Assurance, Secret Management & Bounded Execution"
+message: >-
+  If you use this software, please cite it as below.
+authors:
+  - family-names: "Perla"
+    given-names: "Emir"
+    orcid: "https://orcid.org/0009-0009-8515-2727"
+    affiliation: "We Do Care Global"
+    email: "emirperla96@gmail.com"
+version: "0.1.3"
+date-released: 2026-09-24
+url: "https://github.com/WeDoCareGlobal/AgentVault-Next"
+license: "Apache-2.0"
+keywords:
+  - "agent assurance"
+  - "secret management"
+  - "bounded execution"
+  - "audit trail"
+  - "governance"
