@@ -30,10 +30,16 @@ const allowAll = (over: Partial<PolicyRule> = {}): PolicyRule => ({
   ...over,
 });
 
+const credentials = [
+  { token: "a".repeat(40), subject: "agent://t", tenant: "t1", role: "admin" as const, context: "production" as const },
+  { token: "b".repeat(40), subject: "agent://t", tenant: "t1", role: "agent" as const, context: "production" as const },
+  { token: "c".repeat(40), subject: "agent://other", tenant: "other", role: "admin" as const, context: "production" as const },
+];
 let app: FastifyInstance;
+const inject = (options: any) => app.inject({ ...options, headers: { authorization: `Bearer ${credentials[0].token}`, ...options.headers } });
 
 beforeAll(async () => {
-  app = await buildApp({ dbPath: DB, masterPassphrase: PASS, tenant: "t1", logger: false });
+  app = await buildApp({ dbPath: DB, masterPassphrase: PASS, tenant: "t1", logger: false, credentials });
   await app.ready();
 });
 
@@ -46,53 +52,53 @@ afterAll(async () => {
 
 describe("health & version", () => {
   it("reports the brand on /health and /version", async () => {
-    const h = await app.inject({ method: "GET", url: "/health" });
+    const h = await inject({ method: "GET", url: "/health" });
     expect(h.statusCode).toBe(200);
     expect(h.json()).toEqual({ status: "ok", service: "AgentVault", version: "0.1.3" });
 
-    const v = await app.inject({ method: "GET", url: "/version" });
+    const v = await inject({ method: "GET", url: "/version" });
     expect(v.json()).toMatchObject({ brand: "We Do Care Global", orcid: "0009-0009-8515-2727" });
-    expect((await app.inject({ url: "/ready" })).statusCode).toBe(200);
+    expect((await inject({ url: "/ready" })).statusCode).toBe(200);
   });
 });
 
 describe("tools API", () => {
   it("registers, lists, fetches and removes a tool", async () => {
-    const created = await app.inject({
+    const created = await inject({
       method: "POST", url: "/v1/tools",
       payload: { manifest: manifest(), trust: "High", publisher: "acme" },
     });
     expect(created.statusCode).toBe(201);
     expect(created.json()).toMatchObject({ name: "acme/tool", version: "1.0.0", trust_level: "High", publisher: "acme" });
 
-    const list = await app.inject({ method: "GET", url: "/v1/tools" });
+    const list = await inject({ method: "GET", url: "/v1/tools" });
     expect(list.json().tools).toHaveLength(1);
 
-    const one = await app.inject({ method: "GET", url: "/v1/tools/acme%2Ftool/1.0.0" });
+    const one = await inject({ method: "GET", url: "/v1/tools/acme%2Ftool/1.0.0" });
     expect(one.statusCode).toBe(200);
     expect(one.json().manifest.description).toBe("test tool");
 
-    const removed = await app.inject({ method: "DELETE", url: "/v1/tools/acme%2Ftool/1.0.0" });
+    const removed = await inject({ method: "DELETE", url: "/v1/tools/acme%2Ftool/1.0.0" });
     expect(removed.statusCode).toBe(200);
-    expect((await app.inject({ method: "DELETE", url: "/v1/tools/acme%2Ftool/1.0.0" })).statusCode).toBe(404);
+    expect((await inject({ method: "DELETE", url: "/v1/tools/acme%2Ftool/1.0.0" })).statusCode).toBe(404);
   });
 
   it("rejects an invalid trust level and an incomplete manifest", async () => {
-    const bad = await app.inject({
+    const bad = await inject({
       method: "POST", url: "/v1/tools", payload: { manifest: manifest({ name: "acme/bad" }), trust: "Godmode" },
     });
     expect(bad.statusCode).toBe(400);
 
-    const incomplete = await app.inject({ method: "POST", url: "/v1/tools", payload: { manifest: { name: "acme/x" } } });
+    const incomplete = await inject({ method: "POST", url: "/v1/tools", payload: { manifest: { name: "acme/x" } } });
     expect(incomplete.statusCode).toBe(400);
 
-    expect((await app.inject({ method: "GET", url: "/v1/tools/acme%2Ftool/9.9.9" })).statusCode).toBe(404);
+    expect((await inject({ method: "GET", url: "/v1/tools/acme%2Ftool/9.9.9" })).statusCode).toBe(404);
   });
 });
 
 describe("secrets API", () => {
   it("stores, lists, rotates, reads and revokes without leaking plaintext", async () => {
-    const created = await app.inject({
+    const created = await inject({
       method: "POST", url: "/v1/secrets",
       payload: { namespace: "slack", key: "webhook", value: "https://hooks.slack.com/secret" },
     });
@@ -101,31 +107,31 @@ describe("secrets API", () => {
     // plaintext must not appear in the response body
     expect(created.body).not.toContain("hooks.slack.com");
 
-    const list = await app.inject({ method: "GET", url: "/v1/secrets" });
+    const list = await inject({ method: "GET", url: "/v1/secrets" });
     expect(list.json().secrets).toHaveLength(1);
     expect(list.body).not.toContain("hooks.slack.com");
 
-    const rotated = await app.inject({
+    const rotated = await inject({
       method: "POST", url: "/v1/secrets/rotate", payload: { namespace: "slack", key: "webhook" },
     });
     expect(rotated.json().key_version).toBe(2);
 
-    const revoked = await app.inject({
+    const revoked = await inject({
       method: "DELETE", url: "/v1/secrets", payload: { namespace: "slack", key: "webhook" },
     });
     expect(revoked.json().status).toBe("revoked");
-    expect((await app.inject({ method: "GET", url: "/v1/secrets" })).json().secrets).toHaveLength(0);
+    expect((await inject({ method: "GET", url: "/v1/secrets" })).json().secrets).toHaveLength(0);
   });
 
   it("validates the request body", async () => {
-    expect((await app.inject({ method: "POST", url: "/v1/secrets", payload: { namespace: "a" } })).statusCode).toBe(400);
-    expect((await app.inject({ method: "POST", url: "/v1/secrets/rotate", payload: { key: "k" } })).statusCode).toBe(400);
+    expect((await inject({ method: "POST", url: "/v1/secrets", payload: { namespace: "a" } })).statusCode).toBe(400);
+    expect((await inject({ method: "POST", url: "/v1/secrets/rotate", payload: { key: "k" } })).statusCode).toBe(400);
   });
 });
 
 describe("execute: fail-closed governance", () => {
   it("404s an unregistered tool", async () => {
-    const res = await app.inject({
+    const res = await inject({
       method: "POST", url: "/v1/execute", payload: { tool: "nope/nope@1.0.0", arguments: {} },
     });
     expect(res.statusCode).toBe(404);
@@ -133,8 +139,8 @@ describe("execute: fail-closed governance", () => {
   });
 
   it("denies when no policy matches", async () => {
-    await app.inject({ method: "POST", url: "/v1/tools", payload: { manifest: manifest() } });
-    const res = await app.inject({
+    await inject({ method: "POST", url: "/v1/tools", payload: { manifest: manifest() } });
+    const res = await inject({
       method: "POST", url: "/v1/execute", payload: { tool: "acme/tool@1.0.0", arguments: { text: "hi" } },
     });
     expect(res.statusCode).toBe(403);
@@ -142,8 +148,8 @@ describe("execute: fail-closed governance", () => {
   });
 
   it("executes once a policy allows, and reports governance + cost", async () => {
-    await app.inject({ method: "POST", url: "/v1/policies", payload: allowAll() });
-    const res = await app.inject({
+    await inject({ method: "POST", url: "/v1/policies", payload: allowAll() });
+    const res = await inject({
       method: "POST", url: "/v1/execute",
       payload: { tool: "acme/tool@1.0.0", arguments: { text: "hi" }, agentUri: "agent://t" },
     });
@@ -158,44 +164,44 @@ describe("execute: fail-closed governance", () => {
   });
 
   it("enforces the manifest role gate before the policy DSL", async () => {
-    await app.inject({
+    await inject({
       method: "POST", url: "/v1/tools",
       payload: { manifest: manifest({ name: "acme/admin-only", governance: { required_role: ["admin"] } }) },
     });
-    await app.inject({ method: "POST", url: "/v1/policies", payload: allowAll({ id: "p-admin-tool" }) });
+    await inject({ method: "POST", url: "/v1/policies", payload: allowAll({ id: "p-admin-tool" }) });
 
-    const asAgent = await app.inject({
-      method: "POST", url: "/v1/execute", payload: { tool: "acme/admin-only@1.0.0", arguments: {}, role: "agent" },
+    const asAgent = await inject({
+      method: "POST", url: "/v1/execute", payload: { tool: "acme/admin-only@1.0.0", arguments: {}, role: "agent" }, headers: { authorization: `Bearer ${credentials[1].token}` },
     });
     expect(asAgent.statusCode).toBe(403);
     expect(asAgent.json().reason).toBe("role_not_permitted");
 
-    const asAdmin = await app.inject({
+    const asAdmin = await inject({
       method: "POST", url: "/v1/execute", payload: { tool: "acme/admin-only@1.0.0", arguments: {}, role: "admin" },
     });
     expect(asAdmin.statusCode).toBe(200);
   });
 
   it("enforces the manifest context gate", async () => {
-    await app.inject({
+    await inject({
       method: "POST", url: "/v1/tools",
       payload: { manifest: manifest({ name: "acme/prod-only", governance: { allowed_contexts: ["production"] } }) },
     });
-    const res = await app.inject({
+    const res = await inject({
       method: "POST", url: "/v1/execute", payload: { tool: "acme/prod-only@1.0.0", arguments: {}, context: "dev" },
     });
     expect(res.statusCode).toBe(403);
-    expect(res.json().reason).toBe("context_not_allowed");
+    expect(res.json().error).toBe("identity_override_forbidden");
   });
 
   it("enforces the manifest sliding-window rate limit", async () => {
-    await app.inject({
+    await inject({
       method: "POST", url: "/v1/tools",
       payload: { manifest: manifest({ name: "acme/limited", governance: { max_calls_per_minute: 2 } }) },
     });
-    const call = () => app.inject({
+    const call = () => inject({
       method: "POST", url: "/v1/execute",
-      payload: { tool: "acme/limited@1.0.0", arguments: {}, agentUri: "agent://limited" },
+      payload: { tool: "acme/limited@1.0.0", arguments: {}, agentUri: "agent://t" },
     });
     expect((await call()).statusCode).toBe(200);
     expect((await call()).statusCode).toBe(200);
@@ -205,21 +211,21 @@ describe("execute: fail-closed governance", () => {
   });
 
   it("validates role and context enums", async () => {
-    const badRole = await app.inject({
+    const badRole = await inject({
       method: "POST", url: "/v1/execute", payload: { tool: "acme/tool@1.0.0", arguments: {}, role: "root" },
     });
-    expect(badRole.statusCode).toBe(400);
-    const badCtx = await app.inject({
+    expect(badRole.statusCode).toBe(403);
+    const badCtx = await inject({
       method: "POST", url: "/v1/execute", payload: { tool: "acme/tool@1.0.0", arguments: {}, context: "prod" },
     });
-    expect(badCtx.statusCode).toBe(400);
-    expect((await app.inject({ method: "POST", url: "/v1/execute", payload: {} })).statusCode).toBe(400);
+    expect(badCtx.statusCode).toBe(403);
+    expect((await inject({ method: "POST", url: "/v1/execute", payload: {} })).statusCode).toBe(400);
   });
 });
 
 describe("audit & telemetry", () => {
   it("keeps the audit chain verifiable across all the calls above", async () => {
-    const res = await app.inject({ method: "GET", url: "/v1/audit?limit=1000" });
+    const res = await inject({ method: "GET", url: "/v1/audit?limit=1000" });
     expect(res.statusCode).toBe(200);
     const { entries, chain_ok } = res.json();
     expect(chain_ok).toBe(true);
@@ -234,19 +240,19 @@ describe("audit & telemetry", () => {
   });
 
   it("records and aggregates calls", async () => {
-    const q = await app.inject({ method: "GET", url: "/v1/telemetry/query?limit=100" });
+    const q = await inject({ method: "GET", url: "/v1/telemetry/query?limit=100" });
     expect(q.statusCode).toBe(200);
     expect(q.json().calls.length).toBeGreaterThan(0);
 
     // acme/tool was called both before (denied: no policy) and after the allow policy
-    const allowed = await app.inject({ method: "GET", url: "/v1/telemetry/query?tool=acme%2Ftool&agent=agent%3A%2F%2Ft" });
-    expect(allowed.json().calls.every((c: any) => c.status === "ok")).toBe(true);
+    const allowed = await inject({ method: "GET", url: "/v1/telemetry/query?tool=acme%2Ftool&agent=agent%3A%2F%2Ft" });
+    expect(allowed.json().calls.some((c: any) => c.status === "ok")).toBe(true);
     expect(allowed.json().calls.length).toBeGreaterThan(0);
 
-    const denied = await app.inject({ method: "GET", url: "/v1/telemetry/query?tool=acme%2Flimited" });
+    const denied = await inject({ method: "GET", url: "/v1/telemetry/query?tool=acme%2Flimited" });
     expect(denied.json().calls.some((c: any) => c.status === "denied")).toBe(true);
 
-    const sum = await app.inject({ method: "GET", url: "/v1/telemetry/summary" });
+    const sum = await inject({ method: "GET", url: "/v1/telemetry/summary" });
     expect(sum.json().summary.calls).toBeGreaterThan(0);
     expect(sum.json().summary.totalCostUsd).toBeGreaterThan(0);
   });
@@ -256,7 +262,7 @@ describe("audit & telemetry", () => {
     const addr = await app.listen({ port: 0, host: "127.0.0.1" });
     const controller = new AbortController();
     try {
-      const res = await fetch(`${addr}/v1/telemetry/live`, { signal: controller.signal });
+      const res = await fetch(`${addr}/v1/telemetry/live`, { signal: controller.signal, headers: { authorization: `Bearer ${credentials[0].token}` } });
       expect(res.headers.get("content-type")).toContain("text/event-stream");
       expect(res.headers.get("cache-control")).toBe("no-cache");
 
@@ -276,9 +282,9 @@ describe("audit & telemetry", () => {
         }
       })();
 
-      app.inject({
+      inject({
         method: "POST", url: "/v1/execute",
-        payload: { tool: "acme/tool@1.0.0", arguments: { text: "sse" }, agentUri: "agent://sse" },
+        payload: { tool: "acme/tool@1.0.0", arguments: { text: "sse" }, agentUri: "agent://t" },
       }).catch(() => {});
 
       const call = await Promise.race([
@@ -290,8 +296,40 @@ describe("audit & telemetry", () => {
     } finally {
       controller.abort();
       await app.close();
-      app = await buildApp({ dbPath: DB, masterPassphrase: PASS, tenant: "t1", logger: false });
+      app = await buildApp({ dbPath: DB, masterPassphrase: PASS, tenant: "t1", logger: false, credentials });
       await app.ready();
     }
   }, 15_000);
+});
+
+
+describe("authenticated boundary", () => {
+  it("refuses missing and duplicate credentials before opening storage", async () => {
+    const config = {dbPath: DB, masterPassphrase: PASS, logger: false};
+    await expect(buildApp({...config, credentials: []})).rejects.toThrow("Explicit API credentials required");
+    await expect(buildApp({...config, credentials: [credentials[0], credentials[0]]})).rejects.toThrow("Duplicate API credential");
+  });
+  it("rejects missing, invalid and cross-tenant credentials", async () => {
+    for (const url of ["/v1/tools", "/v1/secrets", "/v1/policies", "/v1/audit", "/v1/telemetry/query", "/v1/telemetry/live"]) {
+      expect((await app.inject({url})).statusCode).toBe(401);
+      expect((await app.inject({url, headers: {authorization: "Bearer invalid"}})).statusCode).toBe(401);
+      expect((await app.inject({url, headers: {authorization: `Bearer ${credentials[2].token}`}})).statusCode).toBe(403);
+    }
+  });
+  it("does not let an agent change policies or impersonate an admin", async () => {
+    const headers = {authorization: `Bearer ${credentials[1].token}`};
+    expect((await app.inject({method: "POST", url: "/v1/policies", headers, payload: allowAll()})).statusCode).toBe(403);
+    expect((await app.inject({method: "POST", url: "/v1/execute", headers, payload: {tool: "acme/tool@1.0.0", role: "admin"}})).statusCode).toBe(403);
+    expect((await app.inject({method: "POST", url: "/v1/execute", headers, payload: {tool: "acme/tool@1.0.0", agentUri: "agent://spoof"}})).statusCode).toBe(403);
+  });
+  it("holds approval without a result, cost or successful telemetry", async () => {
+    await inject({method: "POST", url: "/v1/tools", payload: {manifest: manifest({name: "acme/approval"})}});
+    await inject({method: "POST", url: "/v1/policies", payload: allowAll({id: "approval", action: "approval", priority: 1000, match: {tool: "acme/approval"}})});
+    const res = await inject({method: "POST", url: "/v1/execute", payload: {tool: "acme/approval@1.0.0"}});
+    expect(res.statusCode).toBe(202);
+    expect(res.json().result).toBeUndefined();
+    expect(res.json().cost_usd).toBeUndefined();
+    const spans = await inject({url: "/v1/telemetry/query?tool=acme%2Fapproval"});
+    expect(spans.json().calls).toHaveLength(0);
+  });
 });
