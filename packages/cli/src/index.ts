@@ -10,7 +10,7 @@ import { openDb, ToolRegistry, loadManifest, parseManifest } from "@we-do-care/a
 import { SecretVault, AuditLedger } from "@we-do-care/agentvault-vault";
 import { PolicyStore } from "@we-do-care/agentvault-governance";
 import { Telemetry } from "@we-do-care/agentvault-telemetry";
-import { importOpenAPI } from "@we-do-care/agentvault-importer";
+import { importOpenAPI, type OpenAPISpec } from "@we-do-care/agentvault-importer";
 import { buildApp } from "@we-do-care/agentvault-server";
 import { BRAND, type TrustLevel } from "@we-do-care/agentvault-shared";
 
@@ -144,7 +144,7 @@ tools.command("import <spec>")
   .requiredOption("--name <org>", "publisher/org name")
   .action((spec, opts) => {
     ensureDataDir();
-    const manifests = importOpenAPI(YAML.parse(readFileSync(resolve(spec), "utf8")), { name: opts.name });
+    const manifests = importOpenAPI(YAML.parse(readFileSync(resolve(spec), "utf8")) as OpenAPISpec, { name: opts.name });
     const db = openDb(DB_PATH);
     const registry = new ToolRegistry(db);
     const audit = new AuditLedger(db);
