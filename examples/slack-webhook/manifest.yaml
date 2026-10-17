@@ -1,0 +1,14 @@
+enact: '2.0.0'
+vault: '1.0.0'
+name: we-do-care/slack-webhook
+version: '1.0.0'
+description: Registration example only; the server executor is demo echo.
+inputSchema:
+  type: object
+  properties:
+    text:
+      type: string
+  required: [text]
+secrets:
+  - name: webhook
+    source: vault://default/slack/webhook

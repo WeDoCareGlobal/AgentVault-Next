@@ -1,3 +1,4 @@
+import { createHash, timingSafeEqual } from "node:crypto";
 // SPDX-License-Identifier: Apache-2.0
 // Copyright (c) 2026 We Do Care Global
 // Author: Emir Perla <emirperla96@gmail.com>  ORCID 0009-0009-8515-2727
@@ -10,7 +11,12 @@ import { PolicyStore, evaluate, SlidingWindowCounter, can } from "@we-do-care/ag
 import { Telemetry } from "@we-do-care/agentvault-telemetry";
 import { AgentVaultError, BRAND, type Role, type Context, type TrustLevel, type PolicyRule } from "@we-do-care/agentvault-shared";
 
+export interface Credential {
+  token: string; subject: string; tenant: string; role: Role; context: Context;
+}
+
 export interface ServerConfig {
+  credentials: Credential[];
   dbPath: string;
   masterPassphrase: string;
   tenant?: string;
@@ -25,6 +31,12 @@ const VALID_TRUST: TrustLevel[] = ["Untrusted", "Low", "Medium", "High", "System
 const COST_PER_CALL_USD = 0.0023;
 
 export async function buildApp(cfg: ServerConfig): Promise<FastifyInstance> {
+  if (!cfg.credentials?.length) throw new Error("Explicit API credentials required");
+  const credentials = cfg.credentials.map(c => {
+    if (c.token.length < 32 || !c.subject || !c.tenant || !VALID_ROLES.includes(c.role) || !VALID_CONTEXTS.includes(c.context)) throw new Error("Invalid API credential");
+    return { ...c, digest: createHash("sha256").update(c.token).digest() };
+  });
+  if (new Set(credentials.map(c => c.digest.toString("hex"))).size !== credentials.length) throw new Error("Duplicate API credential");
   const db = openDb(cfg.dbPath);
   const tenant = cfg.tenant ?? "default";
   const registry = new ToolRegistry(db, tenant);
@@ -34,8 +46,24 @@ export async function buildApp(cfg: ServerConfig): Promise<FastifyInstance> {
   const telemetry = new Telemetry(db, tenant);
   const limiter = new SlidingWindowCounter();
 
-  const app = Fastify({ logger: cfg.logger === false ? false : { level: "info" } });
-  await app.register(cors, { origin: true });
+  const app = Fastify({ logger: cfg.logger === false ? false : { level: "info", redact: ["req.headers.authorization"] } });
+  await app.register(cors, { origin: false });
+  const principals = new WeakMap<object, Credential>();
+  app.addHook("onRequest", async (req, reply) => {
+    const path = req.url.split("?")[0];
+    if (["/health", "/ready", "/version"].includes(path)) return;
+    const header = req.headers.authorization;
+    if (!header?.startsWith("Bearer ") || header.length > 4096) return reply.code(401).send({ error: "unauthorized" });
+    const digest = createHash("sha256").update(header.slice(7)).digest();
+    const principal = credentials.find(c => timingSafeEqual(c.digest, digest));
+    if (!principal) return reply.code(401).send({ error: "unauthorized" });
+    if (principal.tenant !== tenant) return reply.code(403).send({ error: "tenant_mismatch" });
+    principals.set(req, principal);
+    const admin = ["admin", "super_admin"].includes(principal.role);
+    if (path !== "/v1/execute" && !(req.method === "GET" && path.startsWith("/v1/tools")) && !admin) {
+      return reply.code(403).send({ error: "admin_required" });
+    }
+  });
 
   // ---- health ----
   app.get("/health", async () => ({ status: "ok", service: BRAND.product, version: BRAND.version }));
@@ -60,7 +88,7 @@ export async function buildApp(cfg: ServerConfig): Promise<FastifyInstance> {
       return reply.code(400).send({ error: "validation_error", message: "manifest.name and manifest.version are required" });
     }
     const t = registry.register(req.body.manifest, trust, req.body.publisher);
-    audit.append("api", "tool.register", `tool:${t.name}@${t.version}`, { id: t.id, trust });
+    audit.append(principals.get(req)!.subject, "tool.register", `tool:${t.name}@${t.version}`, { id: t.id, trust });
     return reply.code(201).send(t);
   });
 
@@ -68,7 +96,7 @@ export async function buildApp(cfg: ServerConfig): Promise<FastifyInstance> {
     const name = decodeURIComponent(req.params.name);
     const ok = registry.remove(name, req.params.version);
     if (!ok) return reply.code(404).send({ error: "not_found" });
-    audit.append("api", "tool.remove", `tool:${name}@${req.params.version}`);
+    audit.append(principals.get(req)!.subject, "tool.remove", `tool:${name}@${req.params.version}`);
     return { status: "removed" };
   });
 
@@ -85,7 +113,7 @@ export async function buildApp(cfg: ServerConfig): Promise<FastifyInstance> {
       const meta = await vault.put(namespace, key, value, {
         scope: req.body.scope, ttlSeconds: req.body.ttlSeconds,
       });
-      audit.append("api", "secret.create", `vault://${meta.namespace}/${meta.key}`, { key_version: meta.key_version });
+      audit.append(principals.get(req)!.subject, "secret.create", `vault://${meta.namespace}/${meta.key}`, { key_version: meta.key_version });
       return reply.code(201).send(meta);
     },
   );
@@ -96,7 +124,7 @@ export async function buildApp(cfg: ServerConfig): Promise<FastifyInstance> {
       return reply.code(400).send({ error: "validation_error", message: "namespace and key are required" });
     }
     const meta = await vault.rotate(namespace, key, value);
-    audit.append("api", "secret.rotate", `vault://${meta.namespace}/${meta.key}`, { key_version: meta.key_version });
+    audit.append(principals.get(req)!.subject, "secret.rotate", `vault://${meta.namespace}/${meta.key}`, { key_version: meta.key_version });
     return meta;
   });
 
@@ -104,7 +132,7 @@ export async function buildApp(cfg: ServerConfig): Promise<FastifyInstance> {
     const { namespace, key } = req.body ?? {};
     if (!namespace || !key) return { status: "bad_request", reason: "namespace_and_key_required" };
     const ok = vault.revoke(namespace, key);
-    audit.append("api", "secret.revoke", `vault://${namespace}/${key}`, { removed: ok });
+    audit.append(principals.get(req)!.subject, "secret.revoke", `vault://${namespace}/${key}`, { removed: ok });
     return { status: ok ? "revoked" : "not_found" };
   });
 
@@ -115,7 +143,7 @@ export async function buildApp(cfg: ServerConfig): Promise<FastifyInstance> {
       return reply.code(400).send({ error: "validation_error", message: "id and action are required" });
     }
     const rule = policies.put(req.body);
-    audit.append("api", "policy.upsert", `policy:${rule.id}`, { priority: rule.priority ?? 100 });
+    audit.append(principals.get(req)!.subject, "policy.upsert", `policy:${rule.id}`, { priority: rule.priority ?? 100 });
     return reply.code(201).send(rule);
   });
 
@@ -127,9 +155,16 @@ export async function buildApp(cfg: ServerConfig): Promise<FastifyInstance> {
     const started = Date.now();
     const {
       tool, arguments: args = {},
-      context = "production", role = "agent", agentUri = "agent://anonymous",
+      context: requestedContext, role: requestedRole, agentUri: requestedAgent,
     } = req.body ?? {};
 
+    const principal = principals.get(req)!;
+    const { role, context, subject: agentUri } = principal;
+    if ((requestedRole !== undefined && requestedRole !== role) ||
+        (requestedContext !== undefined && requestedContext !== context) ||
+        (requestedAgent !== undefined && requestedAgent !== agentUri)) {
+      return reply.code(403).send({ error: "identity_override_forbidden" });
+    }
     if (!tool) return reply.code(400).send({ error: "validation_error", message: "tool is required" });
     if (!VALID_ROLES.includes(role)) {
       return reply.code(400).send({ error: "validation_error", message: `role must be one of ${VALID_ROLES.join(", ")}` });
@@ -182,6 +217,10 @@ export async function buildApp(cfg: ServerConfig): Promise<FastifyInstance> {
       });
     }
 
+    if (decision.decision === "approval") {
+      audit.append(agentUri, "tool.approval_required", tool, { policyId: decision.policyId });
+      return reply.code(202).send({ status: "approval_required", reason: "approval_workflow_not_configured" });
+    }
     limiter.hit(key);
     audit.append(agentUri, "tool.allowed", tool, { policyId: decision.policyId, context, role });
 
@@ -195,7 +234,8 @@ export async function buildApp(cfg: ServerConfig): Promise<FastifyInstance> {
     });
 
     return {
-      status: decision.decision === "approval" ? "approval_required" : "ok",
+      status: "ok",
+      execution_mode: "demo_echo",
       call_id: newId(),
       result,
       latency_ms: latency,
