@@ -1,5 +1,8 @@
 # AgentVault — Agent Assurance, Secret Management & Bounded Execution
 
+> **Development status:** This repository is a work in progress. The architecture and examples below are not a certification that every integration is implemented or production-validated. Review the current source, tests and release notes before deployment. Publication DOIs identify their recorded artifacts, not automatically the latest Next commit. See the [portfolio evidence index](https://wedocare-global.com/evidence.html).
+
+
 [![License: Apache-2.0](https://img.shields.io/badge/License-Apache%202.0-blue.svg)](LICENSE)
 [![ORCID](https://img.shields.io/badge/ORCID-0009--0009--8515--2727-green.svg)](https://orcid.org/0009-0009-8515-2727)
 [![We Do Care Global](https://img.shields.io/badge/We%20Do%20Care%20Global-Enterprise%20AI%20Governance-purple.svg)](https://wedocare-global.com/)
@@ -17,7 +20,7 @@ nešto bez dokaza.
 - 🔐 **Secret management**: Argon2 hesiranje, scoped secret store, crypto helpers.
 - ⚖️ **Bounded execution**: policy engine, rate limiting, RBAC, capabilities restriction.
 - 📜 **Audit trail**: append-only audit log, human-in-the-loop approvals.
-- 🌐 **Live demo**: https://we-do-care-global.github.io/agentvault/
+- 🌐 **Legacy demonstration (not a production vault)**: https://we-do-care-global.github.io/agentvault/
 - 🏷️ **Publish**: Apache-2.0, ORCID 0009-0009-8515-2727, Zenodo DOI (na prvom izlazu).
 
 ## Quickstart
