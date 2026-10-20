@@ -39,6 +39,8 @@ jobs:
           node-version: 22
           cache: pnpm
       - run: pnpm install --frozen-lockfile
+      - name: Build shared package
+        run: pnpm --filter @we-do-care/agentvault-shared build
       - name: Unit tests (vitest) for all packages
         run: pnpm -r --no-bail test
 
