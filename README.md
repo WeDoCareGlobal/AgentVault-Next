@@ -1,5 +1,11 @@
 # AgentVault — Agent Assurance, Secret Management & Bounded Execution
 
+> **Engineering focus:** Tool registry, secrets boundaries and bounded execution.
+>
+> **Evidence boundary:** Security guarantees depend on verified configuration and tests.
+>
+> [Project overview](https://www.wedocare-global.com/agentvault.html) · [Evidence index](https://www.wedocare-global.com/evidence.html) · [Portfolio](https://github.com/WeDoCareGlobal)
+
 [![License: Apache-2.0](https://img.shields.io/badge/License-Apache%202.0-blue.svg)](LICENSE)
 [![ORCID](https://img.shields.io/badge/ORCID-0009--0009--8515--2727-green.svg)](https://orcid.org/0009-0009-8515-2727)
 [![We Do Care Global](https://img.shields.io/badge/We%20Do%20Care%20Global-Enterprise%20AI%20Governance-purple.svg)](https://wedocare-global.com/)
