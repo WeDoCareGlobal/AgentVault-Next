@@ -58,3 +58,34 @@ jobs:
       - run: pnpm install --frozen-lockfile
       - name: Lint all packages
         run: pnpm -r --no-bail lint
+
+  security:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 11.18.0
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - name: Security audit (npm audit)
+        run: pnpm audit --audit-level=high || true
+
+      - name: Trivy filesystem scan
+        uses: aquasecurity/trivy-action@master
+        with:
+          scan-type: fs
+          scan-ref: .
+          severity: HIGH,CRITICAL
+          exit-code: '1'
+
+      - name: SPDX license header check
+        run: |
+          for f in $(git ls-files '*.ts' '*.tsx' '*.js' '*.py'); do
+            if ! head -5 "$f" | grep -qiE 'SPDX-License-Identifier|Copyright|Apache-2.0|MIT|BSD'; then
+              echo "::warning::Missing SPDX/license header: $f"
+            fi
+          done
