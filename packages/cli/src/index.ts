@@ -34,7 +34,7 @@ function readValue(flagValue?: string): string {
 async function api(path: string, init?: RequestInit) {
   const res = await fetch(`${API}${path}`, {
     ...init,
-    headers: { "Content-Type": "application/json", ...(init?.headers ?? {}) },
+    headers: { Authorization: `Bearer ${process.env.AGENTVAULT_API_TOKEN ?? ""}`, "Content-Type": "application/json", ...(init?.headers ?? {}) },
   });
   const text = await res.text();
   let body: any;
@@ -345,7 +345,7 @@ telemetry.command("live")
   .description("Stream tool calls over SSE (Ctrl+C to stop)")
   .action(async () => {
     console.log(`Live telemetry (${BRAND.product}) - Ctrl+C to stop`);
-    const res = await fetch(`${API}/v1/telemetry/live`);
+    const res = await fetch(`${API}/v1/telemetry/live`, { headers: { Authorization: `Bearer ${process.env.AGENTVAULT_API_TOKEN ?? ""}` } });
     if (!res.body) throw new Error(`SSE stream unavailable (HTTP ${res.status}) - is the server running?`);
     const reader = res.body.getReader();
     const dec = new TextDecoder();
@@ -376,7 +376,7 @@ program.command("serve")
   .option("--host <host>", "bind host", HOST)
   .action(async (opts) => {
     ensureDataDir();
-    const app = await buildApp({ dbPath: DB_PATH, masterPassphrase: MASTER });
+    const app = await buildApp({ dbPath: DB_PATH, masterPassphrase: MASTER, credentials: JSON.parse(process.env.AGENTVAULT_CREDENTIALS_JSON ?? "[]") });
     await app.listen({ port: Number(opts.port), host: opts.host });
     console.log(`\n  ${BRAND.product} v${BRAND.version}`);
     console.log(`  ${BRAND.org} - ORCID ${BRAND.orcid}`);
