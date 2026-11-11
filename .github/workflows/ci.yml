@@ -39,8 +39,8 @@ jobs:
           node-version: 22
           cache: pnpm
       - run: pnpm install --frozen-lockfile
-      - name: Build shared package
-        run: pnpm --filter @we-do-care/agentvault-shared build
+      - name: Build all workspace packages before tests
+        run: pnpm -r --workspace-concurrency=1 --sort build
       - name: Unit tests (vitest) for all packages
         run: pnpm -r --no-bail test
 
@@ -56,8 +56,8 @@ jobs:
           node-version: 22
           cache: pnpm
       - run: pnpm install --frozen-lockfile
-      - name: Lint all packages
-        run: pnpm -r --no-bail lint
+      - name: Run available package lint scripts
+        run: pnpm -r --if-present lint
 
   security:
     runs-on: ubuntu-latest
@@ -72,7 +72,7 @@ jobs:
           cache: pnpm
       - run: pnpm install --frozen-lockfile
       - name: Security audit (npm audit)
-        run: pnpm audit --audit-level=high || true
+        run: pnpm audit --audit-level=high
 
       - name: Trivy filesystem scan
         uses: aquasecurity/trivy-action@master
