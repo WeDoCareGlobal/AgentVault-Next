@@ -11,5 +11,25 @@
   "description": "Registry, secret management and bounded execution toolset for autonomous AI agents, with append-only audit evidence. Part of the We Do Care Global governance stack.",
   "access_right": "open",
   "license": "Apache-2.0",
-  "version": "0.1.3"
+  "version": "0.1.3",
+  "keywords": [
+    "AI agents",
+    "secret management",
+    "bounded execution",
+    "audit trail",
+    "tool registry",
+    "MCP"
+  ],
+  "related_identifiers": [
+    {
+      "identifier": "https://github.com/WeDoCareGlobal/AgentVault-Next",
+      "relation": "isSupplementTo",
+      "scheme": "url"
+    },
+    {
+      "identifier": "https://we-do-care-global.github.io/agentvault/",
+      "relation": "isDocumentedBy",
+      "scheme": "url"
+    }
+  ]
 }

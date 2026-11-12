@@ -1,14 +1,22 @@
-enact: '2.0.0'
-vault: '1.0.0'
+enact: "1.0"
+vault: "default"
 name: we-do-care/slack-webhook
-version: '1.0.0'
-description: Registration example only; the server executor is demo echo.
+version: "1.0.0"
+description: "Send messages to a Slack webhook"
+command: "node slack-webhook.js"
 inputSchema:
   type: object
   properties:
-    text:
+    message:
       type: string
-  required: [text]
+  required:
+    - message
 secrets:
-  - name: webhook
+  - name: SLACK_WEBHOOK_URL
     source: vault://default/slack/webhook
+governance:
+  required_role:
+    - agent
+  max_calls_per_minute: 10
+  allowed_contexts:
+    - production
